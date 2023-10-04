@@ -40,6 +40,7 @@ public class PostagemController {
     public void delete(@PathVariable Long id){
         Optional<Postagem> postagem = postagemRepository.findById(id);
 
+
         if (postagem.isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 
