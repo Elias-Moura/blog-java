@@ -1,6 +1,6 @@
 package com.example.blogpessoal.domain.repository;
 
-import com.example.blogpessoal.domain.models.Postagem;
+import com.example.blogpessoal.domain.modelos.Postagem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 

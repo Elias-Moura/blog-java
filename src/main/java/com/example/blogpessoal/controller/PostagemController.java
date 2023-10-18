@@ -1,16 +1,21 @@
 package com.example.blogpessoal.controller;
 
-import com.example.blogpessoal.domain.models.Postagem;
+import com.example.blogpessoal.domain.dto.postagem.DadosAtualizacaoPostagem;
+import com.example.blogpessoal.domain.dto.postagem.DadosCadastroPostagem;
+import com.example.blogpessoal.domain.dto.postagem.DadosListagemPostagem;
+import com.example.blogpessoal.domain.modelos.Postagem;
 import com.example.blogpessoal.domain.repository.PostagemRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/postagens")
@@ -18,49 +23,53 @@ import java.util.Optional;
 public class PostagemController {
 
     @Autowired
-    private PostagemRepository postagemRepository;
+    private PostagemRepository repository;
 
     @GetMapping
-    public ResponseEntity<List<Postagem>> getAll() {
-        return ResponseEntity.ok(postagemRepository.findAll());
-    }
-
-    @GetMapping("/titulo/{titulo}")
-    public ResponseEntity<List<Postagem>> getByTitulo(@PathVariable String titulo) {
-        return ResponseEntity.ok(postagemRepository.findAllByTituloContainingIgnoreCase(titulo));
-    }
-
-    @PostMapping
-    public ResponseEntity<Postagem> post(@Valid @RequestBody Postagem postagem) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(postagemRepository.save(postagem));
-    }
-
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping({"/{id}"})
-    public void delete(@PathVariable Long id){
-        Optional<Postagem> postagem = postagemRepository.findById(id);
-
-
-        if (postagem.isEmpty())
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-        postagemRepository.deleteById(id);
-    }
-
-    @PutMapping
-    public ResponseEntity<Postagem> put(@Valid @RequestBody Postagem postagem) {
-        return postagemRepository
-                .findById(postagem.getId())
-                .map(resposta -> ResponseEntity.status(HttpStatus.OK)
-                        .body(postagemRepository.save(postagem)))
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build()
-                );
+    public ResponseEntity<Page<DadosListagemPostagem>> getAll(@PageableDefault(size=10, sort={"data"}) Pageable paginacao) {
+        var page = repository.findAll(paginacao).map(DadosListagemPostagem::new);
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Postagem> getById(@PathVariable Long id) {
-        return postagemRepository.findById(id)
-                .map(resposta -> ResponseEntity.ok(resposta))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<DadosListagemPostagem> getById(@PathVariable Long id) {
+        var postagem = repository.getReferenceById(id);
+        return ResponseEntity.ok(new DadosListagemPostagem(postagem));
+    }
+
+    @GetMapping("/titulo/{titulo}")
+    public ResponseEntity<List<DadosListagemPostagem>> getByTitulo(@PathVariable String titulo) {
+        var body = repository.findAllByTituloContainingIgnoreCase(titulo)
+                .stream()
+                .map(DadosListagemPostagem::new)
+                .toList();
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity<DadosCadastroPostagem> post(@RequestBody @Valid DadosCadastroPostagem dados, UriComponentsBuilder uriBuilder) {
+        var postagem = new Postagem(dados);
+        repository.save(postagem);
+
+        var uri = uriBuilder.path("/postagem/{id}").buildAndExpand(postagem.getId()).toUri();
+
+        return ResponseEntity.created(uri).body(new DadosCadastroPostagem(postagem));
+    }
+
+    @DeleteMapping({"/{id}"})
+    @Transactional
+    public ResponseEntity delete(@PathVariable Long id){
+        Postagem postagem = repository.getReferenceById(id);
+        postagem.excluir();
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping
+    public ResponseEntity<DadosListagemPostagem> put(@Valid @RequestBody DadosAtualizacaoPostagem dados) {
+        Postagem postagem = repository.getReferenceById(dados.id());
+        postagem.atualizarInformacoes(dados);
+        return ResponseEntity.ok(new DadosListagemPostagem(postagem));
     }
 }

@@ -1,16 +1,21 @@
 package com.example.blogpessoal.controller;
 
-import com.example.blogpessoal.domain.models.Tema;
+import com.example.blogpessoal.domain.dto.tema.DadosAtualizacaoTema;
+import com.example.blogpessoal.domain.dto.tema.DadosCadastroTema;
+import com.example.blogpessoal.domain.dto.tema.DadosListagemTema;
+import com.example.blogpessoal.domain.modelos.Tema;
 import com.example.blogpessoal.domain.repository.TemaRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/temas")
@@ -18,47 +23,57 @@ import java.util.Optional;
 public class TemaController {
 
     @Autowired
-    private TemaRepository temaRepository;
+    private TemaRepository repository;
 
     @GetMapping
-    public ResponseEntity<List<Tema>> getAll() {
-        return ResponseEntity.ok(temaRepository.findAll());
+    public ResponseEntity<Page<DadosListagemTema>> getAll(@PageableDefault(size = 10, sort = {"nome"}) Pageable paginacao) {
+        var page = repository.findAll(paginacao).map(DadosListagemTema::new);
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Tema> getById(@PathVariable Long id) {
-        return temaRepository.findById(id)
-                .map(resposta -> ResponseEntity.ok(resposta))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<DadosListagemTema> getById(@PathVariable Long id) {
+        var tema = repository.getReferenceById(id);
+        return ResponseEntity.ok(new DadosListagemTema(tema));
     }
 
     @GetMapping("/descricao/{descricao}")
-    public ResponseEntity<List<Tema>> getByTitle(@PathVariable String descricao){
-        return ResponseEntity.ok(temaRepository.findAllByDescricaoContainingIgnoreCase(descricao));
+    public ResponseEntity<List<DadosListagemTema>> getByTitle(@PathVariable String descricao) {
+        var body = repository.findAllByDescricaoContainingIgnoreCase(descricao)
+                .stream()
+                .map(DadosListagemTema::new)
+                .toList();
+        return ResponseEntity.ok(body);
     }
 
     @PostMapping
-    public ResponseEntity<Tema> post(@Valid @RequestBody Tema tema) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(temaRepository.save(tema));
+    @Transactional
+    public ResponseEntity<DadosListagemTema> post(@Valid @RequestBody DadosCadastroTema dados, UriComponentsBuilder uriBuilder) {
+        var tema = new Tema(dados);
+        repository.save(tema);
+
+        var uri = uriBuilder.path("/tema/{id}").buildAndExpand(tema.getId()).toUri();
+
+        return ResponseEntity.created(uri).body(new DadosListagemTema(tema));
     }
 
     @PutMapping
-    public ResponseEntity<Tema> put(@Valid @RequestBody Tema tema) {
-        return temaRepository.findById(tema.getId())
-                .map(resposta -> ResponseEntity.status(HttpStatus.CREATED)
-                        .body(temaRepository.save(tema))
-                ).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    @Transactional
+    public ResponseEntity put(@RequestBody @Valid DadosAtualizacaoTema dados) {
+        var tema = repository.getReferenceById(dados.id());
+        tema.atualizarInformacoes(dados);
+
+        return ResponseEntity.ok(new DadosListagemTema(tema));
     }
 
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        Optional<Tema> tema = temaRepository.findById(id);
+    @Transactional
+    public ResponseEntity delete(@PathVariable Long id) {
+        var tema = repository.getReferenceById(id);
+        tema.excluir();
 
-        if(tema.isEmpty())
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-        temaRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }
