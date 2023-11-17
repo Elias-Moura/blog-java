@@ -25,7 +25,7 @@ public class JwtService {
 
     public String generateToken(String email) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, email);
+        return "Bearer " + createToken(claims, email);
     }
 
     private String createToken(Map<String, Object> claims, String email) {
@@ -70,6 +70,11 @@ public class JwtService {
     }
 
     public String extractOnlyHashPartOfToken(String bearerToken) {
-        return bearerToken.substring(7);
+        if (bearerToken.contains(" ")) {
+            //0123456
+            //bearer tokenxpto123124
+            return bearerToken.substring(7);
+        }
+        return bearerToken;
     }
 }
