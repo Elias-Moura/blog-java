@@ -1,23 +1,24 @@
 package com.example.blogpessoal.domain.dto.postagem;
 
-import com.example.blogpessoal.domain.dto.tema.DadosAtualizacaoTema;
+import com.example.blogpessoal.domain.dto.usuario.DadosListagemUsuarioSemPosts;
 import com.example.blogpessoal.domain.modelos.Postagem;
 
 import java.time.LocalDateTime;
 
-public record DadosAtualizacaoPostagem(
+public record DadosListagemPostagemPorTema(
         Long id,
         String titulo,
         String texto,
         LocalDateTime data,
-        DadosAtualizacaoTema tema
+        DadosListagemUsuarioSemPosts usuario
 ) {
-    public DadosAtualizacaoPostagem(Postagem dados) {
+    public DadosListagemPostagemPorTema(Postagem dados){
         this(
                 dados.getId(),
                 dados.getTitulo(),
                 dados.getTexto(),
                 dados.getData(),
-                new DadosAtualizacaoTema(dados.getTema()));
+                new DadosListagemUsuarioSemPosts(dados.getUsuario())
+        );
     }
 }
