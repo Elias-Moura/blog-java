@@ -2,7 +2,7 @@ package com.example.blogpessoal.services;
 
 import com.example.blogpessoal.domain.dto.security.DadosAutenticacao;
 import com.example.blogpessoal.domain.dto.security.DadosToken;
-import com.example.blogpessoal.domain.dto.usuario.DadosAtualizacaoUsuario;
+import com.example.blogpessoal.domain.dto.usuario.DadosBodyAtaualizacaoUsuario;
 import com.example.blogpessoal.domain.dto.usuario.DadosCadastroUsuario;
 import com.example.blogpessoal.domain.dto.usuario.DadosListagemUsuario;
 import com.example.blogpessoal.domain.modelos.Usuario;
@@ -35,7 +35,7 @@ public class UsuarioService {
 
     public DadosListagemUsuario create(DadosCadastroUsuario data) {
         if (isEmailAlreadyRegistered(data.email()))
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Email already registered.");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Email já foi registrado.");
 
         Usuario usuario = new Usuario(data);
         usuario.setSenha(this.encryptPassword(usuario.getSenha()));
@@ -57,7 +57,7 @@ public class UsuarioService {
     public DadosListagemUsuario findById(Long id) {
         return repository.findById(id)
                 .map((response) -> new DadosListagemUsuario(response))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
     }
 
 
@@ -68,28 +68,36 @@ public class UsuarioService {
     }
 
 
-    public DadosListagemUsuario update(DadosAtualizacaoUsuario data) {
-        String email = jwtService.extractUserEmail(jwtService.extractOnlyHashPartOfToken(data.token()));
+    public DadosListagemUsuario update(DadosBodyAtaualizacaoUsuario dadosAtaualizacao, String token) {
+        String email = jwtService.extractUserEmail(jwtService.extractOnlyHashPartOfToken(token));
+//        String email = dadosAtaualizacao.email();
 
-        if (!this.isUserExistsByEmail(email) || !this.isUserExistsById(data.id()))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
+        if (!this.isUserExistsByEmail(email) || !this.isUserExistsById(dadosAtaualizacao.id()))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Email já foi registrado.");
 
-        Optional<Usuario> usuario = repository.findByEmail(email);
+        Usuario usuario = repository.findByEmail(email).get();
 
-        if (usuario.get().getId() != data.id()) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        if (usuario.getId() != dadosAtaualizacao.id()) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
-        if (usuario.get().getEmail() != data.email())
-            if (this.isEmailInUseByOtherUser(data.email(), data.id()))
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Email already registered.");
+        if (usuario.getEmail() != dadosAtaualizacao.email())
+            if (this.isEmailInUseByOtherUser(dadosAtaualizacao.email(), dadosAtaualizacao.id()))
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Email já foi registrado.");
 
-        usuario.get().setEmail(data.email());
-        usuario.get().setImagem(data.imagem());
-        usuario.get().setNome(data.nome());
-        usuario.get().setSenha(this.encryptPassword(data.senha()));
+        if (dadosAtaualizacao.nome() != null) {
+            usuario.setNome(dadosAtaualizacao.nome());
+        }
+        if (dadosAtaualizacao.email() != null) {
+            usuario.setEmail(dadosAtaualizacao.email());
+        }
+        if (dadosAtaualizacao.imagem() != null) {
+            usuario.setImagem(dadosAtaualizacao.imagem());
+        }
+        if (dadosAtaualizacao.senha() != null){
+            usuario.setSenha(this.encryptPassword(dadosAtaualizacao.senha()));
+        }
 
-        repository.save(usuario.get());
-
-        return new DadosListagemUsuario(usuario.get());
+        repository.save(usuario);
+        return new DadosListagemUsuario(usuario);
     }
 
 
@@ -106,18 +114,20 @@ public class UsuarioService {
     }
 
 
-    public void destroy(DadosAtualizacaoUsuario data) {
-        String usuarioEmail = jwtService.extractUserEmail(jwtService.extractOnlyHashPartOfToken(data.token()));
+    public HttpStatus destroy(Long id, String token) {
+        String usuarioEmail = jwtService.extractUserEmail(jwtService.extractOnlyHashPartOfToken(token));
+//        String usuarioEmail = data.email();
 
-        if (!this.isUserExistsByEmail(usuarioEmail) || !this.isUserExistsById(data.id()))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found.");
+        if (!this.isUserExistsByEmail(usuarioEmail) || !this.isUserExistsById(id))
+            return HttpStatus.UNAUTHORIZED;
 
         Optional<Usuario> usuario = repository.findByEmail(usuarioEmail);
 
-        if (usuario.get().getId() != data.id())
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        if (usuario.get().getId() != id)
+            return HttpStatus.FORBIDDEN;
 
         repository.delete(usuario.get());
+        return HttpStatus.NO_CONTENT;
     }
 
     public DadosToken authenticateUser(DadosAutenticacao loginData) {
@@ -127,13 +137,13 @@ public class UsuarioService {
 
         if (authentication.isAuthenticated()) {
             if (!this.isUserExistsByEmail(loginData.email()))
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Incorrect email or password.");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email ou senha incorreta.");
 
             String token = this.generateToken(loginData.email());
 
             return new DadosToken(token);
         }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Incorrect email or password.");
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email ou senha incorreta.");
     }
 
     private String generateToken(String email) {

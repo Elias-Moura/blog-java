@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @Table(name = "usuarios")
@@ -27,12 +28,13 @@ public class Usuario {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "usuario", cascade = CascadeType.REMOVE)
     @JsonIgnoreProperties("usuario")
-    private List<Postagem> postagems;
+    private List<Postagem> postagens;
 
     public Usuario(DadosCadastroUsuario data) {
         this.nome = data.nome();
         this.email = data.email();
         this.senha = data.senha();
         this.imagem = data.imagem();
+        this.postagens = Collections.emptyList();
     }
 }

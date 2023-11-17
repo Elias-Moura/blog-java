@@ -2,7 +2,6 @@ package com.example.blogpessoal.controller;
 
 import com.example.blogpessoal.domain.dto.security.DadosAutenticacao;
 import com.example.blogpessoal.domain.dto.security.DadosToken;
-import com.example.blogpessoal.domain.dto.usuario.DadosAtualizacaoUsuario;
 import com.example.blogpessoal.domain.dto.usuario.DadosBodyAtaualizacaoUsuario;
 import com.example.blogpessoal.domain.dto.usuario.DadosCadastroUsuario;
 import com.example.blogpessoal.domain.dto.usuario.DadosListagemUsuario;
@@ -50,17 +49,15 @@ public class UsuarioController {
     }
 
     @Transactional
-    @PutMapping("/{id}")
-    public ResponseEntity<DadosListagemUsuario> update(@RequestHeader("Authorization") String token, @PathVariable Long id, @Valid @RequestBody DadosBodyAtaualizacaoUsuario data) {
-        DadosAtualizacaoUsuario updateUserDto = new DadosAtualizacaoUsuario(data, id, token);
-        return ResponseEntity.ok(usuarioService.update(updateUserDto));
+    @PutMapping
+    public ResponseEntity<DadosListagemUsuario> update(@RequestHeader("Authorization") String token, @Valid @RequestBody DadosBodyAtaualizacaoUsuario dados) {
+        return ResponseEntity.ok(usuarioService.update(dados, token));
     }
 
     @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity delete(@PathVariable Long id, @RequestHeader("Authorization") String token) {
-        DadosAtualizacaoUsuario updateUserDto = new DadosAtualizacaoUsuario(id, token);
-        usuarioService.destroy(updateUserDto);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        var httpStatus = usuarioService.destroy(id, token);
+        return ResponseEntity.status(httpStatus).build();
     }
 }
