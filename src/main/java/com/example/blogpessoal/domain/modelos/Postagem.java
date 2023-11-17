@@ -29,18 +29,19 @@ public class Postagem {
     private LocalDateTime data;
 
     @ManyToOne
-    @JsonIgnoreProperties("postagems")
+    @JsonIgnoreProperties("postagens")
     private Tema tema;
     private Boolean ativo;
     @ManyToOne
-    @JsonIgnoreProperties("postagems")
+    @JsonIgnoreProperties("postagens")
     private Usuario usuario;
 
-    public Postagem(DadosCadastroPostagem dados) {
+    public Postagem(DadosCadastroPostagem dados, Usuario usuario, Tema tema) {
         this.titulo = dados.titulo();
         this.texto = dados.texto();
         this.data = dados.data();
-        this.tema = new Tema(dados.tema());
+        this.tema = tema;
+        this.usuario = usuario;
         this.ativo = true;
     }
 
@@ -49,9 +50,17 @@ public class Postagem {
     }
 
     public void atualizarInformacoes(DadosAtualizacaoPostagem dados) {
-        this.titulo = dados.titulo();
-        this.texto = dados.texto();
-        this.data = dados.data();
-        this.tema = new Tema(dados.tema());
+        if (dados.titulo() != null){
+            this.titulo = dados.titulo();
+        }
+        if (dados.texto() != null) {
+            this.texto = dados.texto();
+        }
+        if (dados.data() != null){
+            this.data = dados.data();
+        }
+        if (dados.tema() != null){
+            this.tema = new Tema(dados.tema());
+        }
     }
 }
