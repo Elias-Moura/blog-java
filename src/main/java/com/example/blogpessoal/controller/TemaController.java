@@ -4,7 +4,7 @@ import com.example.blogpessoal.domain.dto.tema.DadosAtualizacaoTema;
 import com.example.blogpessoal.domain.dto.tema.DadosCadastroTema;
 import com.example.blogpessoal.domain.dto.tema.DadosListagemTema;
 import com.example.blogpessoal.domain.modelos.Tema;
-import com.example.blogpessoal.domain.repository.TemaRepository;
+import com.example.blogpessoal.domain.service.TemaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -23,56 +23,48 @@ import java.util.List;
 public class TemaController {
 
     @Autowired
-    private TemaRepository repository;
+    private TemaService service;
 
     @GetMapping
-    public ResponseEntity<Page<DadosListagemTema>> getAll(@PageableDefault(size = 10, sort = {"nome"}) Pageable paginacao) {
-        var page = repository.findAll(paginacao).map(DadosListagemTema::new);
+    public ResponseEntity<Page<DadosListagemTema>> getAll(
+                @PageableDefault(size = 10, sort = {"id"}) Pageable paginacao, boolean isActive
+        ) {
+        var page = service.findAll(paginacao, isActive);
         return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DadosListagemTema> getById(@PathVariable Long id) {
-        var tema = repository.getReferenceById(id);
-        return ResponseEntity.ok(new DadosListagemTema(tema));
+        var tema = service.findById(id);
+        return ResponseEntity.ok(tema);
     }
 
-    @GetMapping("/descricao/{descricao}")
-    public ResponseEntity<List<DadosListagemTema>> getByTitle(@PathVariable String descricao) {
-        var body = repository.findAllByDescricaoContainingIgnoreCase(descricao)
-                .stream()
-                .map(DadosListagemTema::new)
-                .toList();
+    @GetMapping("/titulo/{titulo}")
+    public ResponseEntity<List<DadosListagemTema>> getByTitle(@PathVariable String titulo) {
+        var body = service.findByTitulo(titulo);
         return ResponseEntity.ok(body);
     }
 
     @PostMapping
     @Transactional
     public ResponseEntity<DadosListagemTema> post(@Valid @RequestBody DadosCadastroTema dados, UriComponentsBuilder uriBuilder) {
-        var tema = new Tema(dados);
-        repository.save(tema);
-
+        Tema tema = service.create(dados);
         var uri = uriBuilder.path("/tema/{id}").buildAndExpand(tema.getId()).toUri();
-
         return ResponseEntity.created(uri).body(new DadosListagemTema(tema));
     }
 
     @PutMapping
     @Transactional
     public ResponseEntity put(@RequestBody @Valid DadosAtualizacaoTema dados) {
-        var tema = repository.getReferenceById(dados.id());
-        tema.atualizarInformacoes(dados);
-
-        return ResponseEntity.ok(new DadosListagemTema(tema));
+        DadosListagemTema dadosListagemTema = service.update(dados);
+        return ResponseEntity.ok(dadosListagemTema);
     }
 
 
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity delete(@PathVariable Long id) {
-        var tema = repository.getReferenceById(id);
-        tema.excluir();
-
+        service.remove(id);
         return ResponseEntity.noContent().build();
     }
 
