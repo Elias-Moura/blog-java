@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class TratadorDeErros {
@@ -29,6 +30,12 @@ public class TratadorDeErros {
     public ResponseEntity tratarErro400(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest().body(ex.getMessage());
     }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity tratarErrorStatusException(ResponseStatusException ex){
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getMessage());
+    }
+
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity tratarErroBadCredentials() {
